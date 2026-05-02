@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Virtual environments
+.venv/
+mlx-env/
+venv/
+env/
+
+# ML artifacts (these will live on external SSD when it arrives)
+models/
+datasets/
+checkpoints/
+logs/
+*.safetensors
+*.bin
+*.gguf
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
