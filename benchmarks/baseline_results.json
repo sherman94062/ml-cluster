@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-05-02T18:06:06.613125",
+  "model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+  "hardware": "M3 Pro 36GB",
+  "max_tokens": 256,
+  "runs": [
+    {
+      "run": 1,
+      "tokens": 256,
+      "seconds": 2.391652822494507,
+      "tokens_per_second": 107.03894712151015
+    },
+    {
+      "run": 2,
+      "tokens": 256,
+      "seconds": 2.3498570919036865,
+      "tokens_per_second": 108.94279523722315
+    },
+    {
+      "run": 3,
+      "tokens": 256,
+      "seconds": 2.396116018295288,
+      "tokens_per_second": 106.83956788625397
+    }
+  ],
+  "average_tokens_per_second": 107.60710341499576
+}
