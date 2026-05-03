@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-05-03T12:44:45.634927",
+  "model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+  "hardware": "M3 Pro 36GB",
+  "decode_tokens_per_run": 128,
+  "results": [
+    {
+      "prompt_tokens": 1027,
+      "prompt_tps": 1795.2897679855243,
+      "generation_tokens": 128,
+      "generation_tps": 108.16956632812179,
+      "peak_memory_gb": 1.61302032,
+      "wall_seconds": 1.8704938888549805,
+      "context_target": 1024
+    },
+    {
+      "prompt_tokens": 4077,
+      "prompt_tps": 1744.5985029812339,
+      "generation_tokens": 128,
+      "generation_tps": 100.87613484422765,
+      "peak_memory_gb": 1.723165704,
+      "wall_seconds": 3.7255427837371826,
+      "context_target": 4096
+    },
+    {
+      "prompt_tokens": 8067,
+      "prompt_tps": 1554.1424021223734,
+      "generation_tokens": 128,
+      "generation_tps": 89.96545994059372,
+      "peak_memory_gb": 1.824468052,
+      "wall_seconds": 6.75078821182251,
+      "context_target": 8192
+    },
+    {
+      "prompt_tokens": 16089,
+      "prompt_tps": 1288.7077523864668,
+      "generation_tokens": 128,
+      "generation_tps": 73.95710192965184,
+      "peak_memory_gb": 2.06070894,
+      "wall_seconds": 14.361582040786743,
+      "context_target": 16384
+    },
+    {
+      "prompt_tokens": 32091,
+      "prompt_tps": 932.644170948028,
+      "generation_tokens": 128,
+      "generation_tps": 53.044022394562944,
+      "peak_memory_gb": 2.607082584,
+      "wall_seconds": 36.993496894836426,
+      "context_target": 32768
+    }
+  ]
+}

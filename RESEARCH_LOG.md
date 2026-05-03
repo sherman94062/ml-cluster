@@ -72,3 +72,55 @@ First memory-vs-context data point on M3 Pro. Same model as the Phase 1 baseline
 - This 1.5B-model curve is the *floor* of compression interest — KV cache here only reaches ~460 MB at 16K. The Llama 3.1 8B Phase 2 target will have ~4× the per-token cache footprint (32 layers, larger head_dim) and stretch to 128K context, where uncompressed cache approaches 16-20 GB. That's where compression actually matters.
 - The 72% bandwidth utilization figure is the headroom upper bound for any compression scheme: we cannot get more than (1 / 0.72) ≈ 1.4× decode speedup from removing the cache entirely on this hardware. The real wins are (a) **fitting larger contexts in memory** and (b) **batched/multi-request scenarios** where cache dominates total memory.
 - M3 Pro's 150 GB/s bandwidth is the structural ceiling. Any ratio comparison against KVTC's H100-published numbers (3 TB/s) needs that context — same compression ratio, very different absolute throughput.
+
+---
+
+### 2026-05-03 — Model-size sweep (Qwen 2.5 1.5B vs 7B, both 4-bit)
+
+Pulled `mlx-community/Qwen2.5-7B-Instruct-4bit` (~4.4 GB to internal cache — temporary; will move to external SSD when it arrives). Re-ran the long-context sweep on both sizes for a direct architecture comparison. Same harness (`benchmarks/long_context.py`), same prompt seed, same 128-token decode budget.
+
+**Side-by-side: decode tok/s and peak GPU memory**
+
+| Context | 1.5B tok/s | 1.5B mem | 7B tok/s | 7B mem |
+|---:|---:|---:|---:|---:|
+| 1K | 108.2 | 1.61 GB | 27.7 | 5.12 GB |
+| 4K | 100.9 | 1.72 GB | 26.7 | 5.24 GB |
+| 8K | 90.0 | 1.82 GB | 25.3 | 5.46 GB |
+| 16K | 74.0 | 2.06 GB | 22.8 | 5.89 GB |
+| 32K | 53.0 | 2.61 GB | 18.8 | 6.74 GB |
+
+**Per-token KV cache cost (architectural prediction vs observed):**
+
+| Model | Layers | KV heads | Head dim | Predicted (bf16) | Observed (1K→32K) |
+|---|---:|---:|---:|---:|---:|
+| Qwen 2.5 1.5B | 28 | 2 | 128 | 28 KB/tok | ~32 KB/tok |
+| Qwen 2.5 7B | 28 | 4 | 128 | 56 KB/tok | ~52 KB/tok |
+
+Observed ≈ predicted within ~10% noise on both. The 7B's per-token KV cost is **2× the 1.5B's**, driven entirely by the doubled KV-head count (GQA grouping ratio 7:1 vs 6:1).
+
+**Bandwidth utilization (per-decode-step traffic ÷ M3 Pro's 150 GB/s ceiling):**
+
+| Model | Context | Per-step read | Decode tok/s | GB/s consumed | % of 150 GB/s |
+|---|---:|---:|---:|---:|---:|
+| 1.5B | 1K | ~1.03 GB | 108.2 | 111 | 74% |
+| 1.5B | 32K | ~2.0 GB | 53.0 | 106 | 71% |
+| 7B | 1K | ~4.5 GB | 27.7 | 125 | 83% |
+| 7B | 32K | ~6.1 GB | 18.8 | 115 | 77% |
+
+Both models sit at **70–85% of theoretical bandwidth across the entire context range**. The 7B pushes higher because the model weights dominate the per-step read, masking inefficiencies. **Decode is unambiguously bandwidth-bound on this hardware**, regardless of model size or context length.
+
+**Key implications for Phase 2:**
+
+1. **Llama 3.1 8B will look like Qwen 2.5 7B with ~14% more cache.** Llama 3.1 8B has 32 layers (vs Qwen's 28) and 8 KV heads (vs 4) but with smaller head_dim 128 — net per-token KV ≈ 128 KB (vs Qwen 7B's 56 KB). At 32K context that's ~4 GB of cache; at 128K, ~16 GB. The cache becomes the dominant memory cost only past ~16K context — which is exactly where compression starts to matter.
+2. **Decode-speedup ceiling on this hardware is small.** At 77–83% bandwidth utilization with the cache present, removing the cache entirely caps speedup at ~1.2–1.3×. The compression value on M3 Pro is **context length and concurrent-request capacity**, not raw decode tok/s.
+3. **The KVTC comparison frame stays valid because ratios travel.** A 20× compression ratio means 20× more context fits, or 20× more concurrent prompts share cache budget — those benefits transfer cleanly from H100 to M3 Pro even though absolute tok/s does not.
+4. **7B decode at 32K is already painful (18.8 tok/s).** Llama 3.1 8B at 128K uncompressed will likely be in the single-digit tok/s range and consume ~22 GB total. That's the regime where the M3 Pro 36 GB starts hurting and where compression ROI on this hardware becomes obvious.
+
+**Phase 2 prep checklist updates:**
+- ✅ Harness reusable across model sizes (verified on 1.5B + 7B)
+- ✅ Memory measurement reliable (predicted matches observed)
+- ✅ Bandwidth-bound regime confirmed
+- ⏳ Need: external SSD mounted before pulling Llama 3.1 8B (4-bit ~5 GB, smaller than Qwen 7B but still belongs on external)
+- ⏳ Need: RULER + LongBench eval harness (Phase 2 Step 1, can begin without SSD)
+
+**Next:** wait on SSD for Llama 3.1 8B; meanwhile begin scaffolding `benchmarks/eval_harness.py` for RULER + LongBench.

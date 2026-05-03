@@ -5,8 +5,12 @@ For each target prompt length, runs prefill + a fixed decode budget and
 records prefill tok/s, decode tok/s, and peak GPU memory. Produces the
 memory-scaling curve that KV-cache compression (KVTC, Syntropic) targets.
 
-Pairs with benchmarks/baseline.py (short-context throughput baseline).
+Usage:
+  python benchmarks/long_context.py
+  python benchmarks/long_context.py --model mlx-community/Qwen2.5-7B-Instruct-4bit
+  python benchmarks/long_context.py --contexts 1024,4096,16384,32768
 """
+import argparse
 import time
 import json
 from pathlib import Path
@@ -15,9 +19,9 @@ from datetime import datetime
 import mlx.core as mx
 from mlx_lm import load, stream_generate
 
-MODEL = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+DEFAULT_MODEL = "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+DEFAULT_CONTEXTS = [1024, 4096, 8192, 16384, 32768]
 DECODE_TOKENS = 128
-CONTEXT_LENGTHS = [1024, 4096, 8192, 16384]
 
 
 def build_prompt(tokenizer, target_tokens):
@@ -52,22 +56,34 @@ def run_one(model, tokenizer, prompt, decode_tokens):
     }
 
 
+def slug(model_name):
+    return model_name.split("/")[-1].lower()
+
+
 def main():
-    print(f"Loading {MODEL}...")
-    model, tokenizer = load(MODEL)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--contexts", default=",".join(str(c) for c in DEFAULT_CONTEXTS))
+    ap.add_argument("--decode-tokens", type=int, default=DECODE_TOKENS)
+    args = ap.parse_args()
+
+    contexts = [int(c) for c in args.contexts.split(",")]
+
+    print(f"Loading {args.model}...")
+    model, tokenizer = load(args.model)
 
     print("Warm-up...")
     run_one(model, tokenizer, "Hello, world.", 16)
 
     results = []
-    for ctx in CONTEXT_LENGTHS:
+    for ctx in contexts:
         print(f"\nContext target: {ctx} tokens")
         prompt = build_prompt(tokenizer, ctx)
         try:
-            r = run_one(model, tokenizer, prompt, DECODE_TOKENS)
+            r = run_one(model, tokenizer, prompt, args.decode_tokens)
         except Exception as e:
-            print(f"  FAILED: {e}")
-            results.append({"context_target": ctx, "error": str(e)})
+            print(f"  FAILED: {type(e).__name__}: {e}")
+            results.append({"context_target": ctx, "error": f"{type(e).__name__}: {e}"})
             continue
         r["context_target"] = ctx
         results.append(r)
@@ -77,12 +93,12 @@ def main():
 
     summary = {
         "timestamp": datetime.now().isoformat(),
-        "model": MODEL,
+        "model": args.model,
         "hardware": "M3 Pro 36GB",
-        "decode_tokens_per_run": DECODE_TOKENS,
+        "decode_tokens_per_run": args.decode_tokens,
         "results": results,
     }
-    out_path = Path("benchmarks/long_context_results.json")
+    out_path = Path(f"benchmarks/long_context_{slug(args.model)}.json")
     with out_path.open("w") as f:
         json.dump(summary, f, indent=2)
     print(f"\nSaved to {out_path}")
