@@ -48,3 +48,27 @@ Source: Mike's "Syntropic positioning — post-KVTC" memo to Josef, May 2, 2026 
 - Phase 2 work order: eval harness (RULER + LongBench on uncompressed baseline) → Syntropic port → head-to-head table.
 
 **Next:** Wait for external SSD before pulling Llama 3.1 8B. Begin Phase 2 step 1 (eval harness scaffolding) — this can start without the SSD since harness code is independent of model weights.
+
+---
+
+### 2026-05-03 — Long-context memory & throughput curve (Qwen 2.5 1.5B-Instruct 4-bit)
+
+First memory-vs-context data point on M3 Pro. Same model as the Phase 1 baseline; same hardware. `benchmarks/long_context.py` sweeps prompt length, runs 128 decode tokens per sample, records prefill tok/s, decode tok/s, and peak GPU memory.
+
+| Context (tok) | Prefill (tok/s) | Decode (tok/s) | Peak GPU mem (GB) |
+|---:|---:|---:|---:|
+| 1,027 | 1,721.8 | 110.5 | 1.61 |
+| 4,077 | 1,685.7 | 99.4 | 1.72 |
+| 8,067 | 1,567.2 | 90.2 | 1.82 |
+| 16,089 | 1,290.5 | 74.0 | 2.06 |
+
+**Observations:**
+- Decode throughput degrades **~33%** from 1K to 16K context (110.5 → 74.0 tok/s) — pure memory-bandwidth pressure as the KV cache grows.
+- Peak memory grows **~0.45 GB** from 1K to 16K. Back-of-envelope: 28 layers × 2 (K+V) × 2 KV heads (GQA) × 128 head_dim × 2 bytes (bf16) = **~28 KB per token**. 15K extra tokens × 28 KB ≈ 430 MB — matches observed delta.
+- At 16K context, per-decode-step read traffic ≈ 1 GB (model weights) + 459 MB (KV cache) = **~1.46 GB/token**. At 74 tok/s, that's **~108 GB/s ≈ 72% of M3 Pro's 150 GB/s theoretical bandwidth.** Healthy utilization — confirms decode is bandwidth-bound, not compute-bound, exactly the regime KV compression targets.
+- Prefill degrades only ~25% over the same range — prefill is more compute-bound than decode, less affected by cache size.
+
+**Implications for Phase 2:**
+- This 1.5B-model curve is the *floor* of compression interest — KV cache here only reaches ~460 MB at 16K. The Llama 3.1 8B Phase 2 target will have ~4× the per-token cache footprint (32 layers, larger head_dim) and stretch to 128K context, where uncompressed cache approaches 16-20 GB. That's where compression actually matters.
+- The 72% bandwidth utilization figure is the headroom upper bound for any compression scheme: we cannot get more than (1 / 0.72) ≈ 1.4× decode speedup from removing the cache entirely on this hardware. The real wins are (a) **fitting larger contexts in memory** and (b) **batched/multi-request scenarios** where cache dominates total memory.
+- M3 Pro's 150 GB/s bandwidth is the structural ceiling. Any ratio comparison against KVTC's H100-published numbers (3 TB/s) needs that context — same compression ratio, very different absolute throughput.
