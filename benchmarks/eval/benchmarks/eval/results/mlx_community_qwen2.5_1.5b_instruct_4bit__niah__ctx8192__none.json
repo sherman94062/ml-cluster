@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-05-03T21:48:35.506109",
+  "model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+  "task": "niah",
+  "context_target": 8192,
+  "n_samples": 5,
+  "seed": 42,
+  "max_new_tokens": 32,
+  "compression_config": "none",
+  "load_seconds": 1.03,
+  "hardware": "M3 Pro 36GB",
+  "accuracy": 1.0,
+  "correct": 5,
+  "total": 5,
+  "results": [
+    {
+      "sample_id": "niah_000_d18",
+      "prompt_tokens": 8120,
+      "elapsed_seconds": 5.558,
+      "peak_memory_gb": 1.843,
+      "magic_number": 93810,
+      "depth_pct": 0.189,
+      "context_target": 8192,
+      "correct": true,
+      "expected": "93810",
+      "output_excerpt": "93810"
+    },
+    {
+      "sample_id": "niah_001_d29",
+      "prompt_tokens": 8120,
+      "elapsed_seconds": 5.37,
+      "peak_memory_gb": 1.843,
+      "magic_number": 46048,
+      "depth_pct": 0.296,
+      "context_target": 8192,
+      "correct": true,
+      "expected": "46048",
+      "output_excerpt": "46048"
+    },
+    {
+      "sample_id": "niah_002_d68",
+      "prompt_tokens": 8120,
+      "elapsed_seconds": 5.369,
+      "peak_memory_gb": 1.843,
+      "magic_number": 28289,
+      "depth_pct": 0.689,
+      "context_target": 8192,
+      "correct": true,
+      "expected": "28289",
+      "output_excerpt": "28289"
+    },
+    {
+      "sample_id": "niah_003_d69",
+      "prompt_tokens": 8120,
+      "elapsed_seconds": 5.365,
+      "peak_memory_gb": 1.843,
+      "magic_number": 98696,
+      "depth_pct": 0.693,
+      "context_target": 8192,
+      "correct": true,
+      "expected": "98696",
+      "output_excerpt": "98696"
+    },
+    {
+      "sample_id": "niah_004_d16",
+      "prompt_tokens": 8120,
+      "elapsed_seconds": 5.354,
+      "peak_memory_gb": 1.843,
+      "magic_number": 81482,
+      "depth_pct": 0.17,
+      "context_target": 8192,
+      "correct": true,
+      "expected": "81482",
+      "output_excerpt": "81482"
+    }
+  ]
+}

@@ -20,6 +20,9 @@ logs/
 *.bin
 *.gguf
 
+# Eval results (kept out of git; regenerable from the harness)
+benchmarks/eval/results/
+
 # OS
 .DS_Store
 

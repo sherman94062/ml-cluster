@@ -124,3 +124,42 @@ Both models sit at **70–85% of theoretical bandwidth across the entire context
 - ⏳ Need: RULER + LongBench eval harness (Phase 2 Step 1, can begin without SSD)
 
 **Next:** wait on SSD for Llama 3.1 8B; meanwhile begin scaffolding `benchmarks/eval_harness.py` for RULER + LongBench.
+
+---
+
+### 2026-05-04 — Eval harness scaffold + NIAH smoke test
+
+Phase 2 Step 1 deliverable: a pluggable accuracy benchmark harness for MLX models. Lives at `benchmarks/eval/` (see `benchmarks/eval/README.md` for usage). One task implemented end-to-end: **Needle-in-a-Haystack (NIAH)**, modeled on RULER's `niah_single_1` — a 5-digit "magic number" inserted at a random depth in a long filler passage; model is asked to retrieve it.
+
+**Architecture:**
+- `harness.py` — CLI runner. Loads any MLX model, runs a registered task at a target context length, applies the model's chat template, scores each sample, writes JSON keyed by `(model, task, context_length, compression_config)`.
+- `tasks.py` — task registry. Adding a new task = subclass `Task`, register in `TASKS` dict.
+- Compression hook present (`--compression none` is the only option today). Plug-point reserved for Syntropic primitives without architectural changes.
+- Results gitignored (regenerable from the harness with a fixed seed).
+
+**Smoke test results** (n=5 per cell, seed=42, `max_new_tokens=32`):
+
+| Model | Context (actual) | Accuracy |
+|---|---:|---:|
+| Qwen 2.5 1.5B-Instruct 4bit | 952 | 5/5 |
+| Qwen 2.5 1.5B-Instruct 4bit | 8,120 | 5/5 |
+| Qwen 2.5 1.5B-Instruct 4bit | 16,312 | 5/5 |
+| Qwen 2.5 1.5B-Instruct 4bit | 32,590 | 5/5 |
+| Qwen 2.5 7B-Instruct 4bit | 8,120 | 5/5 |
+| Qwen 2.5 7B-Instruct 4bit | 16,312 | 5/5 |
+
+**Why 100% across the board is the right result for a smoke test.** NIAH single-needle retrieval is "easy" for capable instruct models on contexts up to their trained range. The point of this run is not to find weaknesses in the base models — it's to confirm the harness produces clean accuracy numbers end-to-end (chat template applied, sample IDs deterministic by seed, JSON shape consistent across runs). All confirmed.
+
+**What this enables:** when Syntropic compression lands as a `--compression syntropic-core` (or `-predict`) option, re-running the same model/task/context/seed combination will produce a directly comparable accuracy number. Any degradation = the compression cost on this task. Combined with the long-context memory & throughput data from 2026-05-02/03, we'll have **accuracy + ratio + speed in one comparable schema** — exactly the M2 deliverable shape.
+
+**Deferred (explicitly):**
+- Full RULER suite (multi-needle, multi-key, multi-value, common-words, frequent-words, etc.). NIAH single-needle is the entry point; expanding the suite is mechanical once a task pattern works end-to-end.
+- LongBench. Requires HuggingFace dataset downloads; defer until external SSD is mounted.
+- Aggregation script (`aggregate.py`) to glob `results/*.json` into a single comparison table. Add when there are enough cells to merit it.
+
+**Phase 2 status:**
+- ✅ Step 1 (eval harness scaffold) — done with one working task
+- ✅ Bandwidth-utilization analysis grounding the M2 narrative
+- ⏳ Pull Llama 3.1 8B (gated on external SSD)
+- ⏳ Expand task suite (NIAH multi-needle, MK, MV — can do without SSD on Qwen models as warm-up)
+- ⏳ Scope the Syntropic CUDA reference implementation (Mike-input gated)
